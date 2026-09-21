@@ -1,5 +1,4 @@
 import { useAtom, useAtomValue } from "@effect/atom-react";
-import "./App.css";
 import { Atom } from "effect/unstable/reactivity";
 
 const quantityAtom = Atom.make(1);

@@ -1,5 +1,4 @@
-import { Array } from "effect";
-import { Atom, AtomRegistry } from "effect/unstable/reactivity";
+import { Atom } from "effect/unstable/reactivity";
 
 export type IssueStatus = "open" | "in_progress" | "done";
 

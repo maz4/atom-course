@@ -1,9 +1,8 @@
 import { useAtomValue } from "@effect/atom-react";
-import "./App.css";
 import { Atom } from "effect/unstable/reactivity";
-import Count from "./Count";
-import FreeShippingBadge, { PriceInput } from "./FreeShippingBadge";
-import TitleWithDraft from "./Title";
+
+import AtomBasics from "./AtomBasics";
+import "./App.css";
 
 const messageAtom = Atom.make("Effect Atom is ready");
 
@@ -12,10 +11,7 @@ function App() {
   return (
     <div>
       <p>{message}</p>
-      <Count />
-      <PriceInput />
-      <FreeShippingBadge />
-      <TitleWithDraft />
+      <AtomBasics />
     </div>
   );
 }

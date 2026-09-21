@@ -1,4 +1,4 @@
-import { useAtom, useAtomValue } from "@effect/atom-react";
+import { useAtom } from "@effect/atom-react";
 import { Atom } from "effect/unstable/reactivity";
 
 const savedTitleAtom = Atom.make("Untitled");

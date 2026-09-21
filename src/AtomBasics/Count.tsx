@@ -1,5 +1,4 @@
 import { useAtomSet, useAtomValue } from "@effect/atom-react";
-import "./App.css";
 import { Atom } from "effect/unstable/reactivity";
 import React from "react";
 
