@@ -1,6 +1,5 @@
 import { useAtomValue } from "@effect/atom-react";
-import { Cause, Effect, Schema } from "effect";
-import { ReadonlyArray } from "effect/Array";
+import { Cause, Effect, Schema, Option } from "effect";
 import { AsyncResult, Atom, AtomRegistry } from "effect/unstable/reactivity";
 
 class LoadError extends Schema.TaggedError<LoadError>("LoadError")(
@@ -26,8 +25,8 @@ const fixtures: ReadonlyArray<Issue> = [
 const fetchIssues: Effect.Effect<ReadonlyArray<Issue>, LoadError> = Effect.gen(
   function* () {
     yield* Effect.sleep("400 millis");
-    // return fixtures;
-    return yield* new LoadError({ message: "Something went wrong" });
+    return fixtures;
+    // return yield* new LoadError({ message: "Something went wrong" });
   }
 );
 
@@ -35,8 +34,14 @@ const issuesAtom = Atom.make(fetchIssues);
 
 const Skeleton = () => null;
 
-const IssuesList = () => {
+interface IssuesListProps {
+  /** Dimme the list wehn loading data */
+  dimmed: boolean;
+}
+
+const IssuesList = (props: IssuesListProps) => {
   const value = AsyncResult.getOrThrow(useAtomValue(issuesAtom));
+  console.log({ props, value });
   return null;
 };
 
@@ -44,17 +49,56 @@ const ErrorBanner = (props: { readonly cause: Cause.Cause<LoadError> }) => {
   return Cause.pretty(props.cause);
 };
 
+interface StaleListProps {
+  rows: Issue[];
+  cause: string;
+}
+const StaleList = ({ rows, cause }: StaleListProps) => {
+  return (
+    <div>
+      <p>{cause}</p>
+      {rows.map((row) => (
+        <div key={row.id}>
+          <p>{row.id}</p>
+          <p>{row.title}</p>
+          {/* <p>{row.status}</p> */}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/**
+ * Handeled case by the builder
+ * onDefect receives the defect.
+ * onError receives the typed error, which is LoadError here. With more than one error in the effect it would be the union.
+ * onErrorIf takes a refinement, and onErrorTag takes one tag or an array of tags.
+ * onFailure receives the cause itself.
+ * onInitial receives the result, so it can check waiting.
+ * onInitialOrWaiting, onInterrupt, onSuccess, and onWaiting.
+ * orElse and orNull end the chain.
+ */
+
 const Feed = () => {
   const result = useAtomValue(issuesAtom);
 
-  switch (result._tag) {
-    case "Initial":
-      return <Skeleton />;
-    case "Failure":
-      return <ErrorBanner cause={result.cause} />;
-    default:
-      return <IssuesList />;
-  }
+  return (
+    AsyncResult.builder(result)
+      .onInitial(() => <Skeleton />)
+      .onSuccess((_, result) => <IssuesList dimmed={result.waiting} />)
+      .onErrorTag("LoadError", () => <p>Custom message</p>)
+      // .onFailure((cause) => <ErrorBanner cause={cause} />)
+      .onFailure((cause, failure) =>
+        Option.match(failure.previousSuccess, {
+          onNone: () => <ErrorBanner cause={cause} />,
+          onSome: (previous) => (
+            <StaleList rows={previous.value} cause={cause.toString()} />
+          ),
+        })
+      )
+      .exhaustive() // best when using Agents to make sure the list of exustive options are provided
+    // .orNull()
+  );
 };
 
 const registry = AtomRegistry.make();
