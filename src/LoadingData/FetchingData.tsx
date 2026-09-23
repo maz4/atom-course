@@ -1,5 +1,6 @@
 import { useAtomValue } from "@effect/atom-react";
 import { Cause, Effect, Schema, Option } from "effect";
+import { constNull } from "effect/Function";
 import { AsyncResult, Atom, AtomRegistry } from "effect/unstable/reactivity";
 
 class LoadError extends Schema.TaggedError<LoadError>("LoadError")(
@@ -32,17 +33,37 @@ const fetchIssues: Effect.Effect<ReadonlyArray<Issue>, LoadError> = Effect.gen(
 
 const issuesAtom = Atom.make(fetchIssues);
 
-const Skeleton = () => null;
+const Skeleton = () => <p>SKELETON</p>;
 
 interface IssuesListProps {
   /** Dimme the list wehn loading data */
   dimmed: boolean;
 }
 
+// mapper to get the memorised value of waiting key
+const getWaitingFlag = (result: AsyncResult.AsyncResult<unknown, unknown>) =>
+  result.waiting;
+
 const IssuesList = (props: IssuesListProps) => {
+  const isWaiting = useAtomValue(issuesAtom, getWaitingFlag);
   const value = AsyncResult.getOrThrow(useAtomValue(issuesAtom));
-  console.log({ props, value });
-  return null;
+
+  console.log({ props, value, isWaiting });
+
+  if (isWaiting) {
+    return <p>LOADING...</p>;
+  }
+
+  return (
+    <div>
+      <p>IssuesList Component</p>
+      {value.map((row) => (
+        <div key={row.id}>
+          {row.title} | {row.status.toString()}
+        </div>
+      ))}
+    </div>
+  );
 };
 
 const ErrorBanner = (props: { readonly cause: Cause.Cause<LoadError> }) => {
@@ -61,7 +82,7 @@ const StaleList = ({ rows, cause }: StaleListProps) => {
         <div key={row.id}>
           <p>{row.id}</p>
           <p>{row.title}</p>
-          {/* <p>{row.status}</p> */}
+          <p>{row.status.toString()}</p>
         </div>
       ))}
     </div>
@@ -84,7 +105,8 @@ const Feed = () => {
 
   return (
     AsyncResult.builder(result)
-      .onInitial(() => <Skeleton />)
+      // .onInitial(() => <Skeleton />)
+      .onInitial(() => constNull)
       .onSuccess((_, result) => <IssuesList dimmed={result.waiting} />)
       .onErrorTag("LoadError", () => <p>Custom message</p>)
       // .onFailure((cause) => <ErrorBanner cause={cause} />)
