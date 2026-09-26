@@ -1,4 +1,4 @@
-import { useAtomValue } from "@effect/atom-react";
+import { useAtomRefresh, useAtomValue } from "@effect/atom-react";
 import { Cause, Effect, Schema, Option } from "effect";
 import { constNull } from "effect/Function";
 import { AsyncResult, Atom, AtomRegistry } from "effect/unstable/reactivity";
@@ -25,13 +25,15 @@ const fixtures: ReadonlyArray<Issue> = [
 
 const fetchIssues: Effect.Effect<ReadonlyArray<Issue>, LoadError> = Effect.gen(
   function* () {
-    yield* Effect.sleep("400 millis");
+    yield* Effect.sleep("800 millis");
     return fixtures;
     // return yield* new LoadError({ message: "Something went wrong" });
   }
 );
 
 const issuesAtom = Atom.make(fetchIssues);
+// set automatic periodic refresh of an atom
+// .pipe(Atom.withRefresh("5 seconds"));
 
 const Skeleton = () => <p>SKELETON</p>;
 
@@ -56,6 +58,7 @@ const IssuesList = (props: IssuesListProps) => {
 
   return (
     <div>
+      {/* {isWaiting && <p>LOADING...</p>} */}
       <p>IssuesList Component</p>
       {value.map((row) => (
         <div key={row.id}>
@@ -102,24 +105,33 @@ const StaleList = ({ rows, cause }: StaleListProps) => {
 
 const Feed = () => {
   const result = useAtomValue(issuesAtom);
+  const refresh = useAtomRefresh(issuesAtom);
 
   return (
-    AsyncResult.builder(result)
-      // .onInitial(() => <Skeleton />)
-      .onInitial(() => constNull)
-      .onSuccess((_, result) => <IssuesList dimmed={result.waiting} />)
-      .onErrorTag("LoadError", () => <p>Custom message</p>)
-      // .onFailure((cause) => <ErrorBanner cause={cause} />)
-      .onFailure((cause, failure) =>
-        Option.match(failure.previousSuccess, {
-          onNone: () => <ErrorBanner cause={cause} />,
-          onSome: (previous) => (
-            <StaleList rows={previous.value} cause={cause.toString()} />
-          ),
-        })
-      )
-      .exhaustive() // best when using Agents to make sure the list of exustive options are provided
-    // .orNull()
+    <>
+      <button type="button" onClick={refresh}>
+        Refresh
+      </button>
+
+      {
+        AsyncResult.builder(result)
+          // .onInitial(() => <Skeleton />)
+          .onInitial(() => constNull)
+          .onSuccess((_, result) => <IssuesList dimmed={result.waiting} />)
+          .onErrorTag("LoadError", () => <p>Custom message</p>)
+          // .onFailure((cause) => <ErrorBanner cause={cause} />)
+          .onFailure((cause, failure) =>
+            Option.match(failure.previousSuccess, {
+              onNone: () => <ErrorBanner cause={cause} />,
+              onSome: (previous) => (
+                <StaleList rows={previous.value} cause={cause.toString()} />
+              ),
+            })
+          )
+          .exhaustive() // best when using Agents to make sure the list of exustive options are provided
+        // .orNull()
+      }
+    </>
   );
 };
 
